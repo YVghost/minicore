@@ -1,0 +1,48 @@
+# Entorno virtual
+venv/
+env/
+.env/
+.venv/
+
+# Variables de entorno
+.env
+.env.local
+.env.*.local
+
+# Django
+*.pyc
+__pycache__/
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+media/
+
+# Migraciones generadas (opcional: comenta si prefieres versionar migraciones)
+# */migrations/*.py
+# !*/migrations/__init__.py
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Cobertura de tests
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Distribución / build
+dist/
+build/
+*.egg-info/

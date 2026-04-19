@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ subject.name }} — UDLA Notas{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'grades:career_list' %}">Carreras</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'grades:semester_list' career.pk %}">{{ career.name }}</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'grades:subject_list' semester.pk %}">{{ semester.name }}</a></li>
+    <li class="breadcrumb-item active">{{ subject.name }}</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="fw-bold mb-0">{{ subject.name }}</h2>
+    <p class="text-muted mb-0">Nota deseada: <strong>{{ subject.desired_grade }} / 10</strong></p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'grades:subject_update' subject.pk %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-pencil me-1"></i>Editar materia
+    </a>
+    <a href="{% url 'grades:subject_delete' subject.pk %}" class="btn btn-outline-danger btn-sm">
+      <i class="bi bi-trash me-1"></i>Eliminar
+    </a>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  <!-- Left: grade input -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header py-3 d-flex align-items-center gap-2" style="background:var(--udla-dark);color:white;">
+        <i class="bi bi-pencil-square"></i>
+        Ingresar / Actualizar Notas
+      </div>
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+
+          <!-- Progress 1 -->
+          <div class="mb-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <label class="fw-semibold mb-0" for="{{ form.progress1.id_for_label }}">
+                <span class="weight-badge w-p1 me-2">25%</span>
+                Primer Progreso
+              </label>
+              {% if subject.progress1 is not None %}
+                <span class="badge {% if subject.progress1 >= 7 %}bg-success{% else %}bg-danger{% endif %}">
+                  {{ subject.progress1 }}
+                </span>
+              {% endif %}
+            </div>
+            {{ form.progress1 }}
+            {% if form.progress1.errors %}
+              <div class="text-danger small mt-1">{{ form.progress1.errors.0 }}</div>
+            {% endif %}
+            <div class="form-text">
+              Aporta el <strong>25%</strong> de la nota final.
+              Contribución máxima: <strong>2.50</strong> puntos.
+            </div>
+          </div>
+
+          <hr class="my-3">
+
+          <!-- Progress 2 -->
+          <div class="mb-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <label class="fw-semibold mb-0" for="{{ form.progress2.id_for_label }}">
+                <span class="weight-badge w-p2 me-2">35%</span>
+                Segundo Progreso
+              </label>
+              {% if subject.progress2 is not None %}
+                <span class="badge {% if subject.progress2 >= 7 %}bg-success{% else %}bg-danger{% endif %}">
+                  {{ subject.progress2 }}
+                </span>
+              {% endif %}
+            </div>
+            {{ form.progress2 }}
+            {% if form.progress2.errors %}
+              <div class="text-danger small mt-1">{{ form.progress2.errors.0 }}</div>
+            {% endif %}
+            <div class="form-text">
+              Aporta el <strong>35%</strong> de la nota final.
+              Contribución máxima: <strong>3.50</strong> puntos.
+            </div>
+          </div>
+
+          <hr class="my-3">
+
+          <!-- Progress 3 -->
+          <div class="mb-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <label class="fw-semibold mb-0" for="{{ form.progress3.id_for_label }}">
+                <span class="weight-badge w-p3 me-2">40%</span>
+                Tercer Progreso
+              </label>
+              {% if subject.progress3 is not None %}
+                <span class="badge {% if subject.progress3 >= 7 %}bg-success{% else %}bg-danger{% endif %}">
+                  {{ subject.progress3 }}
+                </span>
+              {% endif %}
+            </div>
+            {{ form.progress3 }}
+            {% if form.progress3.errors %}
+              <div class="text-danger small mt-1">{{ form.progress3.errors.0 }}</div>
+            {% endif %}
+            <div class="form-text">
+              Aporta el <strong>40%</strong> de la nota final.
+              Contribución máxima: <strong>4.00</strong> puntos.
+            </div>
+          </div>
+
+          <div class="d-grid mt-3">
+            <button type="submit" class="btn btn-primary btn-lg">
+              <i class="bi bi-save me-1"></i>Guardar notas
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: summary & prediction -->
+  <div class="col-lg-5">
+
+    <!-- Current grade summary -->
+    <div class="card mb-4">
+      <div class="card-header py-3">
+        <i class="bi bi-bar-chart-fill me-2"></i>Nota acumulada
+      </div>
+      <div class="card-body p-4 text-center">
+        {% if subject.final_grade is not None %}
+          <div class="grade-circle {% if subject.is_passing %}passing{% else %}failing{% endif %} mb-3">
+            {{ subject.final_grade }}
+          </div>
+          <p class="fw-bold mb-1">
+            {% if subject.is_passing %}
+              <span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Aprobado</span>
+            {% else %}
+              <span class="text-danger"><i class="bi bi-x-circle-fill me-1"></i>Reprobado</span>
+            {% endif %}
+          </p>
+          <small class="text-muted">Nota final calculada</small>
+        {% elif subject.progresses_entered > 0 %}
+          <div class="grade-circle warning mb-3">
+            {{ subject.current_grade }}
+          </div>
+          <small class="text-muted">Acumulado parcial ({{ subject.progresses_entered }}/3 progresiones)</small>
+        {% else %}
+          <div class="grade-circle pending mb-3">—</div>
+          <small class="text-muted">Sin notas ingresadas</small>
+        {% endif %}
+
+        <!-- Weight breakdown -->
+        {% if subject.progresses_entered > 0 %}
+        <div class="mt-3 text-start">
+          {% if subject.progress1 is not None %}
+          <div class="d-flex justify-content-between align-items-center mb-1 small">
+            <span><span class="weight-badge w-p1">25%</span> P1: {{ subject.progress1 }}</span>
+            <span class="text-muted">+ {{ subject.progress1|floatformat:2 }} × 0.25 =
+              <strong>{% widthratio subject.progress1 1 1 %}</strong>
+            </span>
+          </div>
+          {% endif %}
+          {% if subject.progress2 is not None %}
+          <div class="d-flex justify-content-between align-items-center mb-1 small">
+            <span><span class="weight-badge w-p2">35%</span> P2: {{ subject.progress2 }}</span>
+          </div>
+          {% endif %}
+          {% if subject.progress3 is not None %}
+          <div class="d-flex justify-content-between align-items-center mb-1 small">
+            <span><span class="weight-badge w-p3">40%</span> P3: {{ subject.progress3 }}</span>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Prediction box -->
+    <div class="card">
+      <div class="card-header py-3">
+        <i class="bi bi-lightning-charge-fill me-2 text-warning"></i>Predicción de Notas
+      </div>
+      <div class="card-body p-4">
+        {% if prediction.status == 'complete' %}
+          <div class="prediction-box {% if prediction.achieved %}complete-pass{% else %}complete-fail{% endif %}">
+            <div class="fw-bold mb-1">
+              {% if prediction.achieved %}
+                <i class="bi bi-trophy-fill text-success me-1"></i>¡Meta alcanzada!
+              {% else %}
+                <i class="bi bi-emoji-frown text-danger me-1"></i>Meta no alcanzada
+              {% endif %}
+            </div>
+            <div class="text-muted small">
+              Nota final <strong>{{ prediction.final_grade }}</strong>
+              (deseada: {{ subject.desired_grade }})
+            </div>
+          </div>
+
+        {% elif prediction.status == 'need_p3' %}
+          <div class="prediction-box {% if prediction.achievable %}achievable{% else %}not-achievable{% endif %}">
+            <div class="fw-bold mb-1">
+              <i class="bi bi-calculator me-1"></i>Necesitas en el 3er progreso:
+            </div>
+            <div class="display-6 fw-bold mb-1
+              {% if prediction.achievable %}text-success{% else %}text-danger{% endif %}">
+              {{ prediction.needed }} <small class="fs-6">/ 10</small>
+            </div>
+            {% if not prediction.achievable %}
+              {% if prediction.needed > 10 %}
+                <div class="small text-danger">
+                  <i class="bi bi-exclamation-triangle me-1"></i>La nota deseada ya no es alcanzable.
+                </div>
+              {% else %}
+                <div class="small text-warning">
+                  <i class="bi bi-info-circle me-1"></i>Nota negativa — ya superaste la meta.
+                </div>
+              {% endif %}
+            {% else %}
+              <div class="small text-muted">
+                Llevas acumulado: <strong>{{ prediction.current }}</strong>
+              </div>
+            {% endif %}
+          </div>
+
+        {% elif prediction.status == 'need_p2_p3' %}
+          <div class="prediction-box {% if prediction.achievable %}achievable{% else %}not-achievable{% endif %}">
+            <div class="fw-bold mb-1">
+              <i class="bi bi-calculator me-1"></i>Promedio necesario en 2do y 3er progreso:
+            </div>
+            <div class="display-6 fw-bold mb-1
+              {% if prediction.achievable %}text-success{% else %}text-danger{% endif %}">
+              {{ prediction.needed }} <small class="fs-6">/ 10</small>
+            </div>
+            {% if not prediction.achievable %}
+              {% if prediction.needed > 10 %}
+                <div class="small text-danger">
+                  <i class="bi bi-exclamation-triangle me-1"></i>La nota deseada ya no es alcanzable.
+                </div>
+              {% else %}
+                <div class="small text-success">
+                  <i class="bi bi-check-circle me-1"></i>¡Ya tienes la nota asegurada!
+                </div>
+              {% endif %}
+            {% else %}
+              <div class="small text-muted mt-1">
+                Llevas acumulado con P1: <strong>{{ prediction.current }}</strong>
+              </div>
+            {% endif %}
+          </div>
+
+        {% else %}
+          <div class="prediction-box no-data">
+            <i class="bi bi-info-circle me-2"></i>
+            Ingresa al menos el primer progreso para ver la predicción.
+          </div>
+        {% endif %}
+
+        <!-- Goal reminder -->
+        <div class="mt-3 p-3 rounded-3 bg-light small">
+          <div class="fw-semibold mb-1">
+            <i class="bi bi-bullseye me-1"></i>Tu meta: {{ subject.desired_grade }} / 10
+          </div>
+          <div class="text-muted">
+            Nota mínima para aprobar en UDLA: <strong>7.00</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

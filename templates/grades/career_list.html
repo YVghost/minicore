@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Mis Carreras — UDLA Notas{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="fw-bold mb-0">Mis Carreras</h2>
+  <a href="{% url 'grades:career_create' %}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i> Nueva carrera
+  </a>
+</div>
+
+{% if careers %}
+  <div class="row g-3">
+    {% for career in careers %}
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100">
+        <div class="card-body d-flex flex-column p-4">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="rounded-circle d-flex align-items-center justify-content-center"
+                 style="width:48px;height:48px;background:var(--udla-dark);color:white;font-size:1.3rem;">
+              <i class="bi bi-building"></i>
+            </div>
+            <div>
+              <h5 class="fw-bold mb-0">{{ career.name }}</h5>
+              <small class="text-muted">{{ career.semesters.count }} semestre{{ career.semesters.count|pluralize }}</small>
+            </div>
+          </div>
+          {% with avg=career.get_overall_average %}
+          {% if avg %}
+            <div class="d-flex align-items-center gap-2 mb-3">
+              <span class="text-muted small">Promedio general:</span>
+              <span class="badge fs-6 {% if avg >= 7 %}bg-success{% else %}bg-danger{% endif %}">{{ avg }}</span>
+            </div>
+          {% endif %}
+          {% endwith %}
+          <div class="mt-auto d-flex gap-2">
+            <a href="{% url 'grades:semester_list' career.pk %}" class="btn btn-primary flex-grow-1 btn-sm">
+              <i class="bi bi-calendar3 me-1"></i>Semestres
+            </a>
+            <a href="{% url 'grades:career_update' career.pk %}" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-pencil"></i>
+            </a>
+            <a href="{% url 'grades:career_delete' career.pk %}" class="btn btn-outline-danger btn-sm">
+              <i class="bi bi-trash"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card text-center py-5">
+    <div class="card-body">
+      <div class="text-muted fs-1 mb-3"><i class="bi bi-building"></i></div>
+      <h5 class="fw-bold">No tienes carreras aún</h5>
+      <p class="text-muted">Crea tu primera carrera para empezar.</p>
+      <a href="{% url 'grades:career_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i> Crear carrera
+      </a>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

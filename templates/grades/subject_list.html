@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}Materias — {{ semester.name }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'grades:career_list' %}">Carreras</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'grades:semester_list' semester.career.pk %}">{{ semester.career.name }}</a></li>
+    <li class="breadcrumb-item active">{{ semester.name }}</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="fw-bold mb-0">{{ semester.name }}</h2>
+    <p class="text-muted mb-0">{{ semester.career.name }}</p>
+  </div>
+  <a href="{% url 'grades:subject_create' semester.pk %}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i> Nueva materia
+  </a>
+</div>
+
+{% if subjects %}
+  <div class="row g-3">
+    {% for subject in subjects %}
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100">
+        <div class="card-body p-4 d-flex flex-column">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <h6 class="fw-bold mb-0">{{ subject.name }}</h6>
+            {% if subject.final_grade %}
+              <span class="badge {% if subject.is_passing %}bg-success{% else %}bg-danger{% endif %} fs-6">
+                {{ subject.final_grade }}
+              </span>
+            {% else %}
+              <span class="badge bg-secondary">{{ subject.progresses_entered }}/3</span>
+            {% endif %}
+          </div>
+
+          <small class="text-muted mb-3">Nota deseada: <strong>{{ subject.desired_grade }}</strong></small>
+
+          <!-- Mini progress bars -->
+          <div class="mb-3">
+            <div class="row g-1 text-center">
+              <div class="col-4">
+                <div class="small text-muted mb-1"><span class="weight-badge w-p1">25%</span></div>
+                <div class="fw-bold {% if subject.progress1 is not None %}text-dark{% else %}text-muted{% endif %}">
+                  {% if subject.progress1 is not None %}{{ subject.progress1 }}{% else %}—{% endif %}
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="small text-muted mb-1"><span class="weight-badge w-p2">35%</span></div>
+                <div class="fw-bold {% if subject.progress2 is not None %}text-dark{% else %}text-muted{% endif %}">
+                  {% if subject.progress2 is not None %}{{ subject.progress2 }}{% else %}—{% endif %}
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="small text-muted mb-1"><span class="weight-badge w-p3">40%</span></div>
+                <div class="fw-bold {% if subject.progress3 is not None %}text-dark{% else %}text-muted{% endif %}">
+                  {% if subject.progress3 is not None %}{{ subject.progress3 }}{% else %}—{% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-auto d-flex gap-2">
+            <a href="{% url 'grades:subject_detail' subject.pk %}" class="btn btn-primary btn-sm flex-grow-1">
+              <i class="bi bi-pencil-square me-1"></i>Ver / Editar notas
+            </a>
+            <a href="{% url 'grades:subject_delete' subject.pk %}" class="btn btn-outline-danger btn-sm">
+              <i class="bi bi-trash"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card text-center py-5">
+    <div class="card-body">
+      <div class="text-muted fs-1 mb-3"><i class="bi bi-journal-x"></i></div>
+      <h5 class="fw-bold">No hay materias en este semestre</h5>
+      <p class="text-muted">Agrega tus materias para empezar a registrar notas.</p>
+      <a href="{% url 'grades:subject_create' semester.pk %}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i> Agregar materia
+      </a>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

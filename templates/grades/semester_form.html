@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ action }} Semestre — UDLA Notas{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'grades:career_list' %}">Carreras</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'grades:semester_list' career.pk %}">{{ career.name }}</a></li>
+    <li class="breadcrumb-item active">{{ action }} semestre</li>
+  </ol>
+</nav>
+
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header py-3" style="background:var(--udla-dark);color:white;">
+        <i class="bi bi-calendar3 me-2"></i>{{ action }} semestre
+      </div>
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+          {% for field in form %}
+            <div class="mb-3">
+              <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors.0 }}</div>{% endif %}
+            </div>
+          {% endfor %}
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1"></i>{{ action }}
+            </button>
+            <a href="{% url 'grades:semester_list' career.pk %}" class="btn btn-outline-secondary">Cancelar</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

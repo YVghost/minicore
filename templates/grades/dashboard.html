@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard — UDLA Notas{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="fw-bold mb-0">¡Hola, {{ user.first_name|default:user.username }}!</h2>
+    <p class="text-muted mb-0">Resumen de tu rendimiento académico</p>
+  </div>
+  <a href="{% url 'grades:career_create' %}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i> Nueva carrera
+  </a>
+</div>
+
+<!-- Stats row -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card text-center p-3">
+      <div class="fs-2 fw-bold text-primary">{{ careers.count }}</div>
+      <div class="text-muted small">Carreras</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center p-3">
+      <div class="fs-2 fw-bold" style="color:var(--udla-dark)">{{ total_subjects }}</div>
+      <div class="text-muted small">Materias</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center p-3">
+      <div class="fs-2 fw-bold text-success">{{ total_passing }}</div>
+      <div class="text-muted small">Aprobadas</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center p-3">
+      <div class="fs-2 fw-bold text-danger">{{ total_failing }}</div>
+      <div class="text-muted small">Reprobadas</div>
+    </div>
+  </div>
+</div>
+
+{% if careers %}
+  {% for career in careers %}
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center py-3"
+         style="background: var(--udla-dark); color: white;">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-building fs-5"></i>
+        <span class="fs-6">{{ career.name }}</span>
+      </div>
+      <a href="{% url 'grades:semester_list' career.pk %}" class="btn btn-sm btn-outline-light">
+        Ver semestres <i class="bi bi-arrow-right ms-1"></i>
+      </a>
+    </div>
+    <div class="card-body p-3">
+      {% if career.semesters.all %}
+        <div class="row g-3">
+          {% for semester in career.semesters.all %}
+          <div class="col-md-6 col-lg-4">
+            <div class="border rounded-3 p-3 h-100">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <h6 class="fw-semibold mb-0">
+                  <i class="bi bi-calendar3 me-1 text-muted"></i>{{ semester.name }}
+                </h6>
+                {% with avg=semester.get_average %}
+                {% if avg %}
+                  <span class="badge {% if avg >= 7 %}bg-success{% else %}bg-danger{% endif %}">
+                    {{ avg }}
+                  </span>
+                {% endif %}
+                {% endwith %}
+              </div>
+              {% if semester.subjects.all %}
+                <ul class="list-unstyled mb-2 small">
+                  {% for subject in semester.subjects.all %}
+                  <li class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                    <a href="{% url 'grades:subject_detail' subject.pk %}" class="text-decoration-none text-dark">
+                      {{ subject.name }}
+                    </a>
+                    {% if subject.final_grade %}
+                      <span class="badge {% if subject.is_passing %}bg-success{% else %}bg-danger{% endif %}">
+                        {{ subject.final_grade }}
+                      </span>
+                    {% else %}
+                      <span class="badge bg-secondary">{{ subject.progresses_entered }}/3</span>
+                    {% endif %}
+                  </li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <p class="text-muted small mb-2">Sin materias aún.</p>
+              {% endif %}
+              <a href="{% url 'grades:subject_list' semester.pk %}" class="btn btn-outline-primary btn-sm w-100">
+                <i class="bi bi-journal-text me-1"></i>Ver materias
+              </a>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-center py-3">
+          <p class="text-muted small mb-2">Esta carrera no tiene semestres aún.</p>
+          <a href="{% url 'grades:semester_create' career.pk %}" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus"></i> Agregar semestre
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+{% else %}
+  <div class="card text-center py-5">
+    <div class="card-body">
+      <div class="text-muted fs-1 mb-3"><i class="bi bi-mortarboard"></i></div>
+      <h5 class="fw-bold">¡Comienza agregando tu carrera!</h5>
+      <p class="text-muted">Crea una carrera para organizar tus semestres y materias.</p>
+      <a href="{% url 'grades:career_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i> Crear primera carrera
+      </a>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

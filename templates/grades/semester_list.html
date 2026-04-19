@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}Semestres — {{ career.name }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'grades:career_list' %}">Carreras</a></li>
+    <li class="breadcrumb-item active">{{ career.name }}</li>
+  </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="fw-bold mb-0">{{ career.name }}</h2>
+    <p class="text-muted mb-0">Semestres registrados</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'grades:career_update' career.pk %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-pencil me-1"></i>Editar carrera
+    </a>
+    <a href="{% url 'grades:semester_create' career.pk %}" class="btn btn-primary">
+      <i class="bi bi-plus-lg me-1"></i> Nuevo semestre
+    </a>
+  </div>
+</div>
+
+{% if semesters %}
+  <div class="row g-3">
+    {% for semester in semesters %}
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100">
+        <div class="card-body p-4 d-flex flex-column">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <h5 class="fw-bold mb-0">
+              <i class="bi bi-calendar3 me-2 text-muted"></i>{{ semester.name }}
+            </h5>
+            {% with avg=semester.get_average %}
+            {% if avg %}
+              <span class="badge fs-6 {% if avg >= 7 %}bg-success{% else %}bg-danger{% endif %}">{{ avg }}</span>
+            {% endif %}
+            {% endwith %}
+          </div>
+
+          <p class="text-muted small mb-3">
+            {{ semester.subjects.count }} materia{{ semester.subjects.count|pluralize }}
+          </p>
+
+          {% if semester.subjects.all %}
+            <ul class="list-unstyled small mb-3">
+              {% for s in semester.subjects.all %}
+              <li class="d-flex justify-content-between py-1 border-bottom">
+                <span>{{ s.name }}</span>
+                {% if s.final_grade %}
+                  <span class="badge {% if s.is_passing %}bg-success{% else %}bg-danger{% endif %}">{{ s.final_grade }}</span>
+                {% else %}
+                  <span class="text-muted">{{ s.progresses_entered }}/3</span>
+                {% endif %}
+              </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+
+          <div class="mt-auto d-flex gap-2">
+            <a href="{% url 'grades:subject_list' semester.pk %}" class="btn btn-primary btn-sm flex-grow-1">
+              <i class="bi bi-journal-text me-1"></i>Materias
+            </a>
+            <a href="{% url 'grades:semester_update' semester.pk %}" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-pencil"></i>
+            </a>
+            <a href="{% url 'grades:semester_delete' semester.pk %}" class="btn btn-outline-danger btn-sm">
+              <i class="bi bi-trash"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card text-center py-5">
+    <div class="card-body">
+      <div class="text-muted fs-1 mb-3"><i class="bi bi-calendar3"></i></div>
+      <h5 class="fw-bold">No hay semestres en esta carrera</h5>
+      <p class="text-muted">Agrega un semestre para comenzar a registrar materias.</p>
+      <a href="{% url 'grades:semester_create' career.pk %}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i> Crear semestre
+      </a>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}
