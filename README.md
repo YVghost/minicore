@@ -2,56 +2,168 @@
 
 Aplicativo web MVC construido con **Django 4.2** para gestionar y predecir notas de la Universidad de las Américas (UDLA). Permite organizar materias por carrera y semestre, registrar notas de cada progreso y calcular automáticamente qué nota se necesita para alcanzar la meta deseada.
 
+Desplegado en **Render** con base de datos **PostgreSQL**. Funciona tanto en entorno local como en producción sin cambiar código, solo variables de entorno.
+
 ---
 
 ## Tabla de Contenidos
 
 1. [Requisitos](#requisitos)
-2. [Instalación y puesta en marcha](#instalación-y-puesta-en-marcha)
-3. [Estructura del proyecto](#estructura-del-proyecto)
-4. [Modelos](#modelos)
-5. [Vistas](#vistas)
-6. [URLs](#urls)
-7. [Templates](#templates)
-8. [Lógica de predicción de notas](#lógica-de-predicción-de-notas)
-9. [Flujo de uso](#flujo-de-uso)
+2. [Instalación local](#instalación-local)
+3. [Variables de entorno](#variables-de-entorno)
+4. [Despliegue en Render](#despliegue-en-render)
+5. [Estructura del proyecto](#estructura-del-proyecto)
+6. [Modelos](#modelos)
+7. [Vistas](#vistas)
+8. [URLs](#urls)
+9. [Templates](#templates)
+10. [Lógica de predicción de notas](#lógica-de-predicción-de-notas)
+11. [Flujo de uso](#flujo-de-uso)
 
 ---
 
 ## Requisitos
 
 - Python 3.10+
-- Django 4.2
-- Pillow 10+ (incluido en requirements.txt)
+- Las siguientes dependencias se instalan con `pip install -r requirements.txt`:
+
+| Paquete               | Uso                                              |
+|-----------------------|--------------------------------------------------|
+| `Django>=4.2`         | Framework principal                              |
+| `psycopg2-binary`     | Conector PostgreSQL                              |
+| `dj-database-url`     | Parsea la variable `DATABASE_URL` a config Django|
+| `python-decouple`     | Lee variables desde `.env` o el entorno del SO   |
+| `gunicorn`            | Servidor WSGI para producción (Render)           |
+| `whitenoise`          | Sirve archivos estáticos sin servidor externo    |
+| `pillow`              | Manejo de imágenes (Django)                      |
 
 ---
 
-## Instalación y puesta en marcha
+## Instalación local
 
 ```bash
-# 1. Clonar / situarse en el directorio del proyecto
+# 1. Situarse en el directorio del proyecto
 cd minicore
 
-# 2. Activar entorno virtual
+# 2. Crear y activar entorno virtual
+python -m venv venv
 source venv/Scripts/activate   # Windows
 source venv/bin/activate       # Linux / macOS
 
 # 3. Instalar dependencias
 pip install -r requirements.txt
 
-# 4. Aplicar migraciones
+# 4. Copiar el archivo de entorno y configurarlo
+cp .env.example .env
+# Editar .env con tus valores (ver sección Variables de entorno)
+
+# 5. Aplicar migraciones
 python manage.py migrate
 
-# 5. (Opcional) Crear superusuario para el panel admin
+# 6. (Opcional) Crear superusuario para el panel admin
 python manage.py createsuperuser
 
-# 6. Levantar el servidor
+# 7. Levantar el servidor
 python manage.py runserver
 ```
 
 Acceder en el navegador: `http://127.0.0.1:8000`
 
 Panel de administración: `http://127.0.0.1:8000/admin`
+
+---
+
+## Variables de entorno
+
+El proyecto usa `python-decouple` para leer la configuración. En local se lee desde el archivo `.env` (ignorado por git). En Render se leen desde las *Environment Variables* del servicio.
+
+### Archivo `.env` (desarrollo local)
+
+Copia `.env.example` como `.env` y completa los valores:
+
+```env
+DEBUG=True
+SECRET_KEY=tu-clave-secreta-larga-y-aleatoria
+
+# URL externa de la BD de Render (para conectarte desde local)
+DATABASE_URL=postgresql://usuario:password@host.render.com/nombre_bd
+
+# Hosts permitidos en local
+ALLOWED_HOSTS=localhost,127.0.0.1
+```
+
+### Variables requeridas en producción (Render Dashboard)
+
+| Variable         | Valor en Render                                               |
+|------------------|---------------------------------------------------------------|
+| `DEBUG`          | `False`                                                       |
+| `SECRET_KEY`     | Clave secreta larga y aleatoria (generar una nueva)           |
+| `DATABASE_URL`   | URL **interna** de la BD PostgreSQL de Render                 |
+| `ALLOWED_HOSTS`  | `tu-app.onrender.com`                                         |
+
+> **Por qué dos URLs de base de datos:**
+> - **URL interna** (`dpg-...a/minicore_base`) — solo funciona dentro de la red de Render. Úsala en producción para latencia mínima y sin costo de ancho de banda.
+> - **URL externa** (`dpg-...ohio-postgres.render.com/minicore_base`) — accesible desde internet. Úsala en local para conectarte a la misma BD de Render durante el desarrollo.
+
+### Comportamiento según entorno
+
+| Situación                    | Base de datos usada       |
+|------------------------------|---------------------------|
+| Sin `.env` y sin `DATABASE_URL` | SQLite local (fallback) |
+| Con `DATABASE_URL` en `.env`    | PostgreSQL (Render)     |
+| En Render con var de entorno    | PostgreSQL (Render)     |
+
+---
+
+## Despliegue en Render
+
+### 1. Preparar el repositorio
+
+Asegúrate de que estos archivos estén commiteados:
+
+```
+build.sh          ← script de build
+requirements.txt  ← dependencias
+.env.example      ← plantilla de variables (sin credenciales reales)
+```
+
+El archivo `.env` **nunca** debe commitearse (está en `.gitignore`).
+
+### 2. Crear el servicio en Render
+
+1. Ir a [render.com](https://render.com) → **New** → **Web Service**
+2. Conectar el repositorio de GitHub/GitLab
+3. Configurar el servicio:
+
+| Campo           | Valor                                      |
+|-----------------|--------------------------------------------|
+| **Runtime**     | Python                                     |
+| **Build Command** | `chmod +x build.sh && ./build.sh`        |
+| **Start Command** | `gunicorn grade_calculator.wsgi:application` |
+| **Plan**        | Free                                       |
+
+### 3. Configurar las variables de entorno en Render
+
+En la sección **Environment** del servicio, agregar:
+
+| Key              | Value                                                                                   |
+|------------------|-----------------------------------------------------------------------------------------|
+| `DEBUG`          | `False`                                                                                 |
+| `SECRET_KEY`     | *(generar con `python -c "import secrets; print(secrets.token_urlsafe(50))"` )*        |
+| `DATABASE_URL`   | URL **interna** de tu BD PostgreSQL de Render                                           |
+| `ALLOWED_HOSTS`  | `tu-app.onrender.com`                                                                   |
+
+### 4. Lo que hace `build.sh` en cada deploy
+
+```bash
+pip install -r requirements.txt      # instala dependencias
+python manage.py collectstatic --no-input  # compila archivos estáticos con WhiteNoise
+python manage.py migrate             # aplica migraciones pendientes
+```
+
+### Archivos estáticos en producción
+
+WhiteNoise (`whitenoise.middleware.WhiteNoiseMiddleware`) sirve los archivos estáticos directamente desde Django sin necesitar un servidor de archivos externo (S3, Nginx, etc.). El `collectstatic` del `build.sh` copia todo a `staticfiles/` con compresión y nombres con hash para caché óptima.
 
 ---
 
@@ -62,12 +174,16 @@ minicore/
 │
 ├── manage.py                        # Punto de entrada de comandos Django
 ├── requirements.txt                 # Dependencias del proyecto
-├── db.sqlite3                       # Base de datos SQLite (se genera al migrar)
+├── build.sh                         # Script de build para Render
+├── .env                             # Variables locales (NO se commitea)
+├── .env.example                     # Plantilla de variables (sí se commitea)
+├── .gitignore                       # Excluye venv, .env, __pycache__, etc.
+├── db.sqlite3                       # BD SQLite — solo si no hay DATABASE_URL
 │
 ├── grade_calculator/                # Paquete de configuración principal
-│   ├── settings.py                  # Configuración global (BD, apps, templates, auth)
+│   ├── settings.py                  # Configuración unificada local/producción
 │   ├── urls.py                      # Enrutador raíz del proyecto
-│   ├── wsgi.py                      # Punto de entrada WSGI (producción)
+│   ├── wsgi.py                      # Punto de entrada WSGI (gunicorn)
 │   └── asgi.py                      # Punto de entrada ASGI
 │
 ├── accounts/                        # App de autenticación de usuarios
@@ -76,9 +192,9 @@ minicore/
 │   └── urls.py                      # Rutas /cuenta/...
 │
 ├── grades/                          # App principal de notas
-│   ├── models.py                    # Career, Semester, Subject
+│   ├── models.py                    # Career, Semester, Subject + lógica de predicción
 │   ├── forms.py                     # CareerForm, SemesterForm, SubjectForm, GradeUpdateForm
-│   ├── views.py                     # CRUD de carreras, semestres, materias + predicción
+│   ├── views.py                     # CRUD de carreras, semestres, materias
 │   ├── urls.py                      # Rutas /app/...
 │   ├── admin.py                     # Registro de modelos en el panel admin
 │   └── migrations/
@@ -102,7 +218,8 @@ minicore/
 │       ├── subject_detail.html      # Ingreso de notas + predicción
 │       └── subject_confirm_delete.html
 │
-└── static/                          # Archivos estáticos (CSS, JS, imágenes propios)
+├── static/                          # Archivos estáticos fuente (CSS, JS, imágenes)
+└── staticfiles/                     # Generado por collectstatic — NO se commitea
 ```
 
 ---
@@ -174,13 +291,13 @@ PASSING_GRADE = Decimal('7.00')
 
 **Propiedades calculadas (no se guardan en BD):**
 
-| Propiedad           | Retorna                                                        |
-|---------------------|----------------------------------------------------------------|
-| `current_grade`     | Suma ponderada de los progresos ingresados hasta el momento    |
-| `final_grade`       | Nota final si los 3 progresos están ingresados, `None` si no  |
-| `is_passing`        | `True/False` si hay nota final, `None` si aún no está completa|
-| `progresses_entered`| Número de progresos ingresados (0–3)                          |
-| `prediction`        | Diccionario con la predicción de nota (ver sección dedicada)   |
+| Propiedad            | Retorna                                                        |
+|----------------------|----------------------------------------------------------------|
+| `current_grade`      | Suma ponderada de los progresos ingresados hasta el momento    |
+| `final_grade`        | Nota final si los 3 progresos están ingresados, `None` si no  |
+| `is_passing`         | `True/False` si hay nota final, `None` si aún no está completa|
+| `progresses_entered` | Número de progresos ingresados (0–3)                          |
+| `prediction`         | Diccionario con la predicción de nota (ver sección dedicada)   |
 
 ---
 
@@ -195,11 +312,11 @@ Las consultas filtran siempre por `user=request.user` para aislar los datos entr
 
 ### Vistas de autenticación (`accounts/views.py`)
 
-| Vista               | Tipo         | Descripción                                       |
-|---------------------|--------------|---------------------------------------------------|
+| Vista               | Tipo         | Descripción                                          |
+|---------------------|--------------|------------------------------------------------------|
 | `CustomLoginView`   | Class-Based  | Extiende `LoginView` de Django con formulario propio |
-| `register_view`     | Function     | Crea el usuario y lo autentica automáticamente    |
-| `logout_view`       | Function     | Cierra sesión y redirige al login                 |
+| `register_view`     | Function     | Crea el usuario y lo autentica automáticamente       |
+| `logout_view`       | Function     | Cierra sesión y redirige al login                    |
 
 ---
 
@@ -207,9 +324,9 @@ Las consultas filtran siempre por `user=request.user` para aislar los datos entr
 
 #### Dashboard
 
-| Vista       | Método | Descripción                                                      |
-|-------------|--------|------------------------------------------------------------------|
-| `dashboard` | GET    | Muestra resumen de todas las carreras, totales de materias aprobadas/reprobadas |
+| Vista       | Método | Descripción                                                                     |
+|-------------|--------|---------------------------------------------------------------------------------|
+| `dashboard` | GET    | Resumen de todas las carreras, totales de materias aprobadas/reprobadas         |
 
 #### Carreras
 
@@ -222,12 +339,12 @@ Las consultas filtran siempre por `user=request.user` para aislar los datos entr
 
 #### Semestres
 
-| Vista             | Método    | Descripción                                    |
-|-------------------|-----------|------------------------------------------------|
-| `semester_list`   | GET       | Lista semestres de una carrera                 |
-| `semester_create` | GET/POST  | Crea un semestre dentro de una carrera         |
-| `semester_update` | GET/POST  | Edita el nombre de un semestre                 |
-| `semester_delete` | GET/POST  | Confirma y elimina un semestre (cascada)       |
+| Vista             | Método    | Descripción                                     |
+|-------------------|-----------|-------------------------------------------------|
+| `semester_list`   | GET       | Lista semestres de una carrera                  |
+| `semester_create` | GET/POST  | Crea un semestre dentro de una carrera          |
+| `semester_update` | GET/POST  | Edita el nombre de un semestre                  |
+| `semester_delete` | GET/POST  | Confirma y elimina un semestre (cascada)        |
 
 #### Materias
 
@@ -258,30 +375,30 @@ La vista `subject_detail` maneja dos responsabilidades en una sola URL:
 
 ### Autenticación (`accounts/urls.py`) — prefijo `/cuenta/`
 
-| URL               | Nombre             | Vista              |
-|-------------------|--------------------|--------------------|
-| `/cuenta/login/`  | `accounts:login`   | CustomLoginView    |
-| `/cuenta/registro/` | `accounts:register` | register_view  |
-| `/cuenta/salir/`  | `accounts:logout`  | logout_view        |
+| URL                  | Nombre               | Vista           |
+|----------------------|----------------------|-----------------|
+| `/cuenta/login/`     | `accounts:login`     | CustomLoginView |
+| `/cuenta/registro/`  | `accounts:register`  | register_view   |
+| `/cuenta/salir/`     | `accounts:logout`    | logout_view     |
 
 ### App principal (`grades/urls.py`) — prefijo `/app/`
 
-| URL                                          | Nombre                     | Vista             |
-|----------------------------------------------|----------------------------|-------------------|
-| `/app/`                                      | `grades:dashboard`         | dashboard         |
-| `/app/carreras/`                             | `grades:career_list`       | career_list       |
-| `/app/carreras/nueva/`                       | `grades:career_create`     | career_create     |
-| `/app/carreras/<pk>/editar/`                 | `grades:career_update`     | career_update     |
-| `/app/carreras/<pk>/eliminar/`               | `grades:career_delete`     | career_delete     |
-| `/app/carreras/<career_pk>/semestres/`       | `grades:semester_list`     | semester_list     |
-| `/app/carreras/<career_pk>/semestres/nuevo/` | `grades:semester_create`   | semester_create   |
-| `/app/semestres/<pk>/editar/`                | `grades:semester_update`   | semester_update   |
-| `/app/semestres/<pk>/eliminar/`              | `grades:semester_delete`   | semester_delete   |
-| `/app/semestres/<semester_pk>/materias/`     | `grades:subject_list`      | subject_list      |
-| `/app/semestres/<semester_pk>/materias/nueva/` | `grades:subject_create`  | subject_create    |
-| `/app/materias/<pk>/`                        | `grades:subject_detail`    | subject_detail    |
-| `/app/materias/<pk>/editar/`                 | `grades:subject_update`    | subject_update    |
-| `/app/materias/<pk>/eliminar/`               | `grades:subject_delete`    | subject_delete    |
+| URL                                            | Nombre                   | Vista           |
+|------------------------------------------------|--------------------------|-----------------|
+| `/app/`                                        | `grades:dashboard`       | dashboard       |
+| `/app/carreras/`                               | `grades:career_list`     | career_list     |
+| `/app/carreras/nueva/`                         | `grades:career_create`   | career_create   |
+| `/app/carreras/<pk>/editar/`                   | `grades:career_update`   | career_update   |
+| `/app/carreras/<pk>/eliminar/`                 | `grades:career_delete`   | career_delete   |
+| `/app/carreras/<career_pk>/semestres/`         | `grades:semester_list`   | semester_list   |
+| `/app/carreras/<career_pk>/semestres/nuevo/`   | `grades:semester_create` | semester_create |
+| `/app/semestres/<pk>/editar/`                  | `grades:semester_update` | semester_update |
+| `/app/semestres/<pk>/eliminar/`                | `grades:semester_delete` | semester_delete |
+| `/app/semestres/<semester_pk>/materias/`       | `grades:subject_list`    | subject_list    |
+| `/app/semestres/<semester_pk>/materias/nueva/` | `grades:subject_create`  | subject_create  |
+| `/app/materias/<pk>/`                          | `grades:subject_detail`  | subject_detail  |
+| `/app/materias/<pk>/editar/`                   | `grades:subject_update`  | subject_update  |
+| `/app/materias/<pk>/eliminar/`                 | `grades:subject_delete`  | subject_delete  |
 
 ---
 
@@ -353,7 +470,7 @@ Dividida en dos columnas:
 
 **Columna derecha — Resumen y predicción:**
 - **Tarjeta "Nota acumulada":** círculo visual con la nota acumulada actual, coloreado verde (aprobado), rojo (reprobado) o gris/amarillo (pendiente).
-- **Tarjeta "Predicción de Notas":** muestra el resultado del motor de predicción en un recuadro con borde de color según si la meta es alcanzable o no. Ver detalle en la sección siguiente.
+- **Tarjeta "Predicción de Notas":** muestra el resultado del motor de predicción en un recuadro con borde de color según si la meta es alcanzable o no.
 
 ---
 
@@ -425,7 +542,7 @@ Se muestra la nota final calculada y si se alcanzó la meta:
 
 ### Nota mínima para aprobar en UDLA
 
-La constante `PASSING_GRADE = Decimal('7.00')` se usa para determinar si una materia está aprobada o reprobada. La escala de notas es de **0 a 10**.
+La constante `PASSING_GRADE = Decimal('7.00')` determina si una materia está aprobada o reprobada. La escala de notas es de **0 a 10**.
 
 ---
 
@@ -451,8 +568,8 @@ La constante `PASSING_GRADE = Decimal('7.00')` se usa para determinar si una mat
         │
         ▼
 6. Ver predicción en tiempo real:
-   - Con P1: "Necesitas 7.87 promedio en P2 y P3"
-   - Con P1+P2: "Necesitas 6.50 en el tercer progreso"
+   - Con P1:      "Necesitas 7.87 promedio en P2 y P3"
+   - Con P1+P2:   "Necesitas 6.50 en el tercer progreso"
    - Con P1+P2+P3: "Nota final: 7.45 — Aprobado"
 ```
 
