@@ -17,6 +17,15 @@ _render_host = config('RENDER_EXTERNAL_HOSTNAME', default=None)
 if _render_host:
     ALLOWED_HOSTS.append(_render_host)
 
+# Django 4.x exige que el dominio HTTPS esté aquí para validar formularios POST (CSRF)
+CSRF_TRUSTED_ORIGINS = ['http://localhost', 'http://127.0.0.1']
+if _render_host:
+    CSRF_TRUSTED_ORIGINS.append(f'https://{_render_host}')
+
+# Render termina TLS en su proxy y reenvía HTTP internamente
+# Sin esto Django no reconoce la conexión como HTTPS y rechaza cookies seguras
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # ─── Aplicaciones ─────────────────────────────────────────────────────────────
 
 INSTALLED_APPS = [
